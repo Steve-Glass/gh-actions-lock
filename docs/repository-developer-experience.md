@@ -142,6 +142,13 @@ Two things to get right:
 
 ### A known CLI gap
 
+> [!NOTE]
+> This section is under review with the engineering team and may change before
+> this guide is published. It describes behavior reproduced against v0.1.6 and
+> `main`, tracked in
+> [#129](https://github.com/github/gh-actions-lock/issues/129), which is not yet
+> triaged.
+
 The lockfile format covers job-level reusable workflow calls, and the Actions
 runtime enforces them — a workflow whose lockfile entry does not match the ref
 in the YAML can be refused at startup.

@@ -7,7 +7,7 @@
 # (jobs.<id>.uses: owner/repo/.github/workflows/x.yml@ref), delete the `update`
 # job below and keep only `verify`. The CLI does not read job-level uses: yet,
 # so a fix run deletes their lockfile entries and this job would commit that.
-# See github/gh-actions-lock#129.
+# See github/gh-actions-lock#129, which is under review and not yet triaged.
 
 name: Maintain Actions lockfile
 

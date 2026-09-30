@@ -45,9 +45,9 @@ root, not to the directory of the file containing them.
 Job-level reusable workflow calls
 (`jobs.<id>.uses: owner/repo/.github/workflows/x.yml@ref`) are not read by the
 CLI yet, and a fix run deletes a correct lockfile entry for one
-(github/gh-actions-lock#129). If this repository calls remote reusable
-workflows, check `git diff` on the lockfile before committing and restore any
-entry the run removed.
+(github/gh-actions-lock#129, under review). If this repository calls remote
+reusable workflows, check `git diff` on the lockfile before committing and
+restore any entry the run removed.
 
 Background on how locking is automated in this repository:
 `docs/repository-developer-experience.md`.
