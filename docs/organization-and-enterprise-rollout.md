@@ -258,9 +258,14 @@ The two are complementary, and the lockfile is the stronger of the pair:
 | --- | --- | --- |
 | Direct actions pinned | Yes | Yes |
 | Transitive dependencies pinned | No | Yes |
-| Reusable workflows | Can still use tags | Covered |
 | Repository identity recorded | No | Yes (`owner_id`, `repo_id`) |
 | Visible in pull request diffs | Ref only | Resolved commit per dependency |
+
+Neither one currently covers calls to remote reusable workflows
+(`jobs.<id>.uses: owner/repo/.github/workflows/x.yml@ref`). The lockfile does
+not pin them, and a workflow that calls one still verifies as valid. If a
+reusable workflow carries security-relevant logic, pin it in the calling
+workflow by SHA yourself.
 
 Running both is reasonable. SHA pinning is a blunt constraint on what a workflow
 may reference; the lockfile is a verified record of what those references

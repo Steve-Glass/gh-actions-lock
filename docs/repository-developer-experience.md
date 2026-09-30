@@ -7,8 +7,9 @@ It is a worked example, not the only design.
 
 > [!NOTE]
 > gh-actions-lock is in public preview. Flags and lockfile format may change
-> between releases. Pin the automation to a release you have tested if that
-> matters to you.
+> between releases. Because the update job rewrites source files, consider
+> pinning the extension to a release you have tested:
+> `gh extension install github/gh-actions-lock --pin v0.1.6`.
 
 ## The idea
 
@@ -113,6 +114,25 @@ transitively. If it does not resolve, the workflow is reported as skipped —
 workflow already in the lockfile, the same situation is a hard error instead of
 a skip, so it fails the `verify` job rather than silently dropping coverage.
 
+## What the lockfile does not cover
+
+Calls to remote reusable workflows are not pinned:
+
+```yaml
+jobs:
+  call:
+    uses: octo/shared/.github/workflows/deploy.yml@main   # not locked
+```
+
+The lockfile records nothing for that line, and `--verify` still reports the
+workflow as valid, so there is no finding to alert you. Actions used *inside*
+that reusable workflow are locked by the lockfile in its own repository, not by
+yours. Self-repository calls written as `$/.github/workflows/x.yml` are
+inherently pinned to the running commit and need no entry.
+
+If a remote reusable workflow carries security-relevant logic, pin it by SHA in
+the calling workflow yourself.
+
 ## Running it yourself
 
 This is the same command the automation runs:
@@ -179,10 +199,14 @@ request. See [Dependabot and the Actions lockfile](./dependabot.md).
   update job cannot commit the regenerated lockfile.
 - The automation grants `contents: write` only to the push-triggered update job.
   The pull request job stays read-only.
-- Pushing to a branch in the same repository fires the `update` and `verify`
-  jobs concurrently, under different concurrency groups. `verify` can briefly
-  fail against the pre-update commit; the dispatched run after the bot commit is
-  the authoritative one.
+- Pushing to a branch that already has an open pull request fires two runs: a
+  `push` run for `update` and a `pull_request` synchronize run for `verify`.
+  They use different concurrency groups, so `verify` can briefly fail against
+  the pre-update commit. The dispatched run after the bot commit is the
+  authoritative one. A push to a branch with no open pull request only runs
+  `update`.
+- The update job pushes a commit onto the branch you just pushed. Your next
+  push from that branch is rejected as non-fast-forward until you `git pull`.
 - Repositories that do not want a bot commit on every workflow edit should drop
   the `update` job and keep only `verify`, making a stale lockfile a failed
   check that the author fixes locally.

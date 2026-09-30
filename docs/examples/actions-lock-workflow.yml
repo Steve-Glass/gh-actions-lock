@@ -42,6 +42,8 @@ jobs:
       - name: Install gh-actions-lock
         env:
           GH_TOKEN: ${{ github.token }}
+        # During public preview, add --pin <tag> to hold a tested release:
+        #   gh extension install github/gh-actions-lock --pin v0.1.6
         run: gh extension install github/gh-actions-lock
 
       # Also rewrites workflow refs and migrates same-repo `./…` actions to

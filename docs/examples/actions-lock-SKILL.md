@@ -42,5 +42,9 @@ lockfile. A report of `local path actions are not yet supported` usually means a
 `./…` reference does not resolve — those paths are relative to the repository
 root, not to the directory of the file containing them.
 
+Calls to remote reusable workflows
+(`jobs.<id>.uses: owner/repo/.github/workflows/x.yml@ref`) are not covered by
+the lockfile and produce no finding. Pin those by SHA in the calling workflow.
+
 Background on how locking is automated in this repository:
 `docs/repository-developer-experience.md`.
