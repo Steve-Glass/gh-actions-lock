@@ -186,3 +186,8 @@ request. See [Dependabot and the Actions lockfile](./dependabot.md).
 - Repositories that do not want a bot commit on every workflow edit should drop
   the `update` job and keep only `verify`, making a stale lockfile a failed
   check that the author fixes locally.
+
+## Related
+
+- [Rolling out lockfiles across an enterprise](./enterprise-rollout.md)
+- [Dependabot and the Actions lockfile](./dependabot.md)
