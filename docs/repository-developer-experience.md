@@ -114,7 +114,33 @@ transitively. If it does not resolve, the workflow is reported as skipped —
 workflow already in the lockfile, the same situation is a hard error instead of
 a skip, so it fails the `verify` job rather than silently dropping coverage.
 
-## Reusable workflows: a known CLI gap
+## Reusable workflows
+
+### Where your lockfile stops
+
+A lockfile pins the actions used by the workflows in its own repository,
+including transitive dependencies. It does not reach across a reusable workflow
+call. When you call `octo/shared/.github/workflows/deploy.yml`, the actions that
+workflow runs are resolved in `octo/shared` against *its* lockfile, at the commit
+you called.
+
+So calling a reusable workflow means trusting that the repository you called has
+locked its own dependencies. Your lockfile cannot do it for them.
+
+What your lockfile does control is which commit of that workflow you get. That
+is the anchor for the whole chain: if the callee ref is not pinned, the callee's
+lockfile is irrelevant, because you do not know which version of it ran. Pinning
+the reusable workflow reference is what makes the callee's own locking
+meaningful.
+
+Two things to get right:
+
+- Pin the reusable workflow reference to a commit SHA.
+- Confirm the repositories you call are onboarded themselves. For internal
+  shared workflows, that is a rollout question. See
+  [Organization and enterprise rollout](organization-and-enterprise-rollout.md).
+
+### A known CLI gap
 
 The lockfile format covers job-level reusable workflow calls, and the Actions
 runtime enforces them — a workflow whose lockfile entry does not match the ref
