@@ -114,24 +114,40 @@ transitively. If it does not resolve, the workflow is reported as skipped —
 workflow already in the lockfile, the same situation is a hard error instead of
 a skip, so it fails the `verify` job rather than silently dropping coverage.
 
-## What the lockfile does not cover
+## Reusable workflows: a known CLI gap
 
-Calls to remote reusable workflows are not pinned:
+The lockfile format covers job-level reusable workflow calls, and the Actions
+runtime enforces them — a workflow whose lockfile entry does not match the ref
+in the YAML can be refused at startup.
+
+The CLI does not yet read `jobs.<id>.uses:`
+([#129](https://github.com/github/gh-actions-lock/issues/129)):
 
 ```yaml
 jobs:
   call:
-    uses: octo/shared/.github/workflows/deploy.yml@main   # not locked
+    uses: octo/shared/.github/workflows/deploy.yml@<sha>   # CLI does not see this
 ```
 
-The lockfile records nothing for that line, and `--verify` still reports the
-workflow as valid, so there is no finding to alert you. Actions used *inside*
-that reusable workflow are locked by the lockfile in its own repository, not by
-yours. Self-repository calls written as `$/.github/workflows/x.yml` are
-inherently pinned to the running commit and need no entry.
+Three consequences, in increasing order of severity:
 
-If a remote reusable workflow carries security-relevant logic, pin it by SHA in
-the calling workflow yourself.
+1. A **missing** entry is not reported. `--no-fix` and `--verify-local` both
+   report complete coverage.
+2. A **correct** entry is reported as `stale`, claiming no `uses:` references
+   it, when the reference is in the file.
+3. A **fix run deletes** that correct entry and reports the workflow valid.
+
+Point 3 is the one that matters for this automation. The `update` job commits
+whatever the fix run produces, so it will commit the deletion, and the next run
+of that workflow can fail to start.
+
+> [!IMPORTANT]
+> Until [#129](https://github.com/github/gh-actions-lock/issues/129) is fixed,
+> do not enable the `update` job in a repository that calls remote reusable
+> workflows. Use the verify-only variant and maintain those entries by hand.
+
+Self-repository calls written as `$/.github/workflows/x.yml` are unaffected:
+they resolve to the running commit and need no entry.
 
 ## Running it yourself
 
