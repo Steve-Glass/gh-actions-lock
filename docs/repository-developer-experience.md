@@ -1,12 +1,12 @@
 # A developer experience for locking a single repository
 
 `gh actions-lock` is a command. This document describes one way to wrap that
-command so that **nobody on your team has to remember to run it**.
+command so that nobody on your team has to remember to run it.
 
-It is a worked example, not the only design. Copy what fits.
+It is a worked example, not the only design.
 
-> [!WARNING]
-> gh-actions-lock is a Technical Preview. Flags and lockfile format may change
+> [!NOTE]
+> gh-actions-lock is in public preview. Flags and lockfile format may change
 > between releases. Pin the automation to a release you have tested if that
 > matters to you.
 
@@ -14,8 +14,8 @@ It is a worked example, not the only design. Copy what fits.
 
 Locking has to happen wherever workflow changes happen. In practice that is two
 places: in the editor while someone (or Copilot) is authoring the change, and on
-GitHub after the change is pushed. Cover both and the lockfile stays current
-without anyone thinking about it.
+GitHub after the change is pushed. Covering both keeps the lockfile current
+without anyone tracking it manually.
 
 | Piece | Location | Role |
 | --- | --- | --- |
@@ -92,11 +92,11 @@ your source files, so review the diff accordingly:
   resolves to the running commit of the repository, so it is inherently pinned
   and needs no lockfile entry. Pass `--no-migrate-local-actions` to opt out.
 
-### Local actions do work — with one catch
+### Local actions
 
 A `./…` reference is resolved **relative to the repository root**, not to the
 directory of the file containing it. This matches how the Actions runner
-resolves it, and it is the usual source of surprise:
+resolves it:
 
 ```yaml
 # my-action/action.yml
@@ -115,7 +115,7 @@ a skip, so it fails the `verify` job rather than silently dropping coverage.
 
 ## Running it yourself
 
-You rarely need this, but it is the same command the automation runs:
+This is the same command the automation runs:
 
 ```bash
 gh extension install github/gh-actions-lock
@@ -131,8 +131,9 @@ Read-only check. Writes nothing, exits non-zero when the lockfile is stale:
 gh actions-lock --verify
 ```
 
-Offline coverage check. No network, no token, fast enough for a pre-commit hook,
-but it only proves every ref has an entry — it does not re-verify the pins:
+Offline coverage check. No network and no token required, so it suits a
+pre-commit hook. It confirms every ref has a lockfile entry, but does not
+re-verify the pins themselves:
 
 ```bash
 gh actions-lock --verify-local
@@ -165,8 +166,8 @@ request. See [Dependabot and the Actions lockfile](./dependabot.md).
 ## Rules of thumb
 
 - Never hand-edit `.github/workflows/actions.lock`. Regenerate it instead.
-- Review lockfile diffs like any other dependency change — a changed commit SHA
-  is the signal.
+- Review lockfile diffs like any other dependency change. A changed commit SHA
+  is what to look at.
 - If verification fails, read the reported finding rather than deleting entries
   to make it pass.
 
@@ -182,6 +183,6 @@ request. See [Dependabot and the Actions lockfile](./dependabot.md).
   jobs concurrently, under different concurrency groups. `verify` can briefly
   fail against the pre-update commit; the dispatched run after the bot commit is
   the authoritative one.
-- Repositories where a bot commit on every workflow edit is unwelcome should
-  drop the `update` job and keep only `verify`, making a stale lockfile a failed
+- Repositories that do not want a bot commit on every workflow edit should drop
+  the `update` job and keep only `verify`, making a stale lockfile a failed
   check that the author fixes locally.

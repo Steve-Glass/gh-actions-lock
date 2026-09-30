@@ -1,16 +1,16 @@
 # Dependabot and the Actions lockfile
 
-Dependabot keeps GitHub Actions dependencies *current*. The lockfile keeps them
-*pinned*. Run both and you get updates that are deliberate and verifiable: a
-version bump arrives as a pull request, and the lockfile in that same pull
-request records the exact commit the new ref resolves to.
+Dependabot keeps GitHub Actions dependencies current. The lockfile keeps them
+pinned. Running both means a version bump arrives as a pull request, and the
+lockfile in that same pull request records the exact commit the new ref
+resolves to.
 
-The two used to drift. When Dependabot bumped `actions/checkout@v4` to `@v5`,
-the lockfile still pinned the old commit and the next verification run failed.
-That gap is closed.
+Previously the two could drift. When Dependabot bumped `actions/checkout@v4` to
+`@v5`, the lockfile still pinned the old commit and the next verification run
+failed. That gap is closed.
 
-> [!WARNING]
-> gh-actions-lock is a Technical Preview. Flags, findings JSON, and lockfile
+> [!NOTE]
+> gh-actions-lock is in public preview. Flags, findings JSON, and lockfile
 > schema may change between releases, and Dependabot pins a specific CLI version
 > and lockfile schema. See [RELEASING.md](../RELEASING.md).
 
@@ -21,13 +21,13 @@ workflow that is **already onboarded** to lockfile pinning, it also regenerates
 the corresponding lockfile entry, so the pinned commit SHA always matches the
 updated ref in your workflow YAML.
 
-The division of labor matters:
+The division of labor:
 
 - **Dependabot owns the workflow YAML.** It decides the new ref, exactly as it
   does today.
 - **The `gh-actions-lock` CLI owns the lockfile, exclusively.** Dependabot
-  invokes the CLI rather than writing lockfile entries itself, so there is one
-  implementation of pinning and one place for it to be wrong.
+  invokes the CLI rather than writing lockfile entries itself, so pinning has a
+  single implementation.
 
 If you already use Dependabot for GitHub Actions and you have onboarded
 workflows, this needs no configuration.
@@ -87,9 +87,7 @@ repository behind that name is not the one you locked.
 
 Dependabot's [`cooldown`
 option](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#cooldown)
-delays updates until a release has had time to settle. Freshly published
-releases are where compromised-package incidents surface, so waiting a few days
-is cheap insurance.
+delays updates until a release has had time to settle.
 
 ```yaml
 # .github/dependabot.yml
@@ -107,11 +105,10 @@ updates:
 
 ### What the CLI actually uses it for
 
-Cooldown does **not** hold back ref narrowing, and this surprises people. When
-the CLI narrows `actions/checkout@v4` to `v4.4.0`, it only considers tags that
-already point at the commit `v4` resolves to. Narrowing renames the commit you
-already have; it never moves you to a newer release. There is nothing for a
-cooldown to delay.
+Cooldown does **not** hold back ref narrowing. When the CLI narrows
+`actions/checkout@v4` to `v4.4.0`, it only considers tags that already point at
+the commit `v4` resolves to. Narrowing renames the commit you already have; it
+never moves you to a newer release. There is nothing for a cooldown to delay.
 
 What cooldown does control:
 
@@ -128,8 +125,7 @@ own config file.
 
 ### Only `default-days` is honored today
 
-The CLI parses the rest of the cooldown block and then ignores it, saying so
-rather than going quiet:
+The CLI parses the rest of the cooldown block and reports the keys it ignores:
 
 ```
 Dependabot cooldown semver-major/minor/patch-days are not supported and were ignored
@@ -147,11 +143,10 @@ workflow](./repository-developer-experience.md), its `verify` job checks
 Dependabot's pull requests like any other. When the lockfile entry is present
 and correct, the check passes and nothing else happens.
 
-The `update` job is the one to think about. It only runs on `push` to a branch
-in your repository, and Dependabot branches live in your repository, so a
-Dependabot pull request whose lockfile is somehow stale gets a bot commit
-fixing it. That is usually what you want, but it means a Dependabot pull request
-can gain a second commit. If you would rather that never happen, scope the
+The `update` job needs more thought. It only runs on `push` to a branch in your
+repository, and Dependabot branches live in your repository, so a Dependabot
+pull request whose lockfile is stale gets a bot commit fixing it. That means a
+Dependabot pull request can gain a second commit. To prevent that, scope the
 update job away from Dependabot branches:
 
 ```yaml
@@ -165,11 +160,11 @@ fixed anything. A stale lockfile that the CLI then repaired reports
 `"valid": false` with `ref-changed` findings and still exits `0`, because the
 run succeeded in fixing it. Re-running reports `"valid": true` with no findings.
 
-Use `--verify` when you want a read-only answer that writes nothing and exits
-non-zero if the lockfile is stale. That is what belongs in a required check.
+Use `--verify` for a read-only answer that writes nothing and exits non-zero if
+the lockfile is stale. That is the form to use in a required check.
 
 ## Related
 
-- [Setting up lockfile pinning](../README.md) — the prerequisite for any of this.
+- [Setting up lockfile pinning](../README.md)
 - [A developer experience for locking a single repository](./repository-developer-experience.md)
 - [Dependabot cooldown options reference](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#cooldown)
