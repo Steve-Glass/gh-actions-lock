@@ -84,6 +84,10 @@ Workflows that are onboarded to the lockfile enforce that all dependencies are p
 
 Finally, locked actions must have a branch that the commit being locked exists within. This is to make impostor commit style attacks harder.
 
+## Documentation
+
+- [A developer experience for locking a single repository](./docs/repository-developer-experience.md) — a worked example that combines a Copilot skill with a workflow so the lockfile stays current without anyone remembering to run the command.
+
 ## Limitations
 
 There are currently eligibility limitations for workflows that can be onboarded to lockfiles:
