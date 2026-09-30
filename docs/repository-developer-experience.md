@@ -158,6 +158,10 @@ gh actions-lock --relock
 If a recorded commit is no longer reachable upstream, that is treated as
 suspicious and left as an error. Re-resolve those with `--accept-moved`.
 
+Dependencies bumped by Dependabot are handled separately: it updates the
+workflow YAML and regenerates the matching lockfile entry in the same pull
+request. See [Dependabot and the Actions lockfile](./dependabot.md).
+
 ## Rules of thumb
 
 - Never hand-edit `.github/workflows/actions.lock`. Regenerate it instead.
