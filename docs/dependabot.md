@@ -5,8 +5,8 @@ pinned. Running both means a version bump arrives as a pull request, and the
 lockfile in that same pull request records the exact commit the new ref
 resolves to.
 
-Previously the two could drift. When Dependabot bumped `actions/checkout@v4` to
-`@v5`, the lockfile still pinned the old commit and the next verification run
+Previously the two could drift. When Dependabot bumped `actions/checkout@v6` to
+`@v7`, the lockfile still pinned the old commit and the next verification run
 failed. That gap is closed.
 
 > [!NOTE]
@@ -43,7 +43,7 @@ Dependabot bumps in a workflow you never locked produces a non-blocking
 {
   "category": "onboarding-required",
   "severity": "info",
-  "detail": "actions/checkout@v4 has no lockfile entry; --no-onboard refuses to add new workflows or actions"
+  "detail": "actions/checkout@v6 has no lockfile entry; --no-onboard refuses to add new workflows or actions"
 }
 ```
 
@@ -55,7 +55,7 @@ gh actions-lock
 ```
 
 Dependabot also passes `--no-narrow`, so the CLI does not rewrite the ref
-Dependabot just chose. Dependabot picked `v5`; the lockfile records `v5` and its
+Dependabot just chose. Dependabot picked `v7`; the lockfile records `v7` and its
 commit, and the YAML is left alone.
 
 ## Reading the update
@@ -66,15 +66,15 @@ lockfile diff is the security-relevant half:
 ```diff
  workflows:
      '.github/workflows/ci.yml':
--        - 'actions/checkout@v4.4.0'
-+        - 'actions/checkout@v5'
+-        - 'actions/checkout@v6.1.0'
++        - 'actions/checkout@v7'
  dependencies:
--    'actions/checkout@v4.4.0':
--        ref: 'v4.4.0'
--        commit: 'sha1-11d5960a326750d5838078e36cf38b85af677262'
-+    'actions/checkout@v5':
-+        ref: 'v5'
-+        commit: 'sha1-fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09'
+-    'actions/checkout@v6.1.0':
+-        ref: 'v6.1.0'
+-        commit: 'sha1-d23441a48e516b6c34aea4fa41551a30e30af803'
++    'actions/checkout@v7':
++        ref: 'v7'
++        commit: 'sha1-3d3c42e5aac5ba805825da76410c181273ba90b1'
          owner_id: 44036562
          repo_id: 197814629
 ```
@@ -106,8 +106,8 @@ updates:
 ### What the CLI actually uses it for
 
 Cooldown does **not** hold back ref narrowing. When the CLI narrows
-`actions/checkout@v4` to `v4.4.0`, it only considers tags that already point at
-the commit `v4` resolves to. Narrowing renames the commit you already have; it
+`actions/checkout@v6` to `v6.1.0`, it only considers tags that already point at
+the commit `v6` resolves to. Narrowing renames the commit you already have; it
 never moves you to a newer release. There is nothing for a cooldown to delay.
 
 What cooldown does control:

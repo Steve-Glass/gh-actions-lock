@@ -1,9 +1,13 @@
-# Rolling out lockfiles across an enterprise
+# Rolling out lockfiles across an organization or enterprise
 
-Locking one repository is a command. Locking a few thousand is a migration. This
-document describes one way to run that migration: open lockfile pull requests
-across every repository, track them to merge, add the per-repository automation,
-then turn on the enterprise policy that requires a lockfile.
+Locking one repository is a command. Locking a few hundred or a few thousand is
+a migration. This document describes one way to run that migration: open
+lockfile pull requests across every repository, track them to merge, add the
+per-repository automation, then turn on the policy that requires a lockfile.
+
+The sequence is the same whether you are an organization owner or an enterprise
+owner. Only two things differ: how you enumerate repositories, and where the
+policy lives. Both are called out where they matter.
 
 > [!NOTE]
 > gh-actions-lock is in public preview, and the **Require lockfile** policy is a
@@ -12,9 +16,9 @@ then turn on the enterprise policy that requires a lockfile.
 
 ## The end state
 
-Enterprise Actions policies are generally available, and one of the workflow
-execution protections they can apply is **Require lockfile**, which requires
-workflows to use a lockfile.
+Actions policies are generally available, and one of the workflow execution
+protections they can apply is **Require lockfile**, which requires workflows to
+use a lockfile.
 
 Order matters. Turning the policy on before repositories have lockfiles blocks
 their workflows. The sequence below gets lockfiles in place first and enables
@@ -35,7 +39,37 @@ flowchart TD
 ## 1. Inventory
 
 Find the repositories that have workflows at all, since those are the only ones
-this applies to:
+this applies to.
+
+For a single organization, list repositories directly:
+
+```bash
+gh repo list ORG --limit 1000 --no-archived \
+  --json nameWithOwner --jq '.[].nameWithOwner' > repos.txt
+```
+
+Across an enterprise, iterate the organizations first. There is no REST endpoint
+that lists an enterprise's organizations, so this one is GraphQL:
+
+```bash
+gh api graphql --paginate -f enterprise=ENTERPRISE -f query='
+  query($enterprise: String!, $endCursor: String) {
+    enterprise(slug: $enterprise) {
+      organizations(first: 100, after: $endCursor) {
+        nodes { login }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  }' --jq '.data.enterprise.organizations.nodes[].login' \
+  | while read -r org; do
+      gh repo list "$org" --limit 1000 --no-archived \
+        --json nameWithOwner --jq '.[].nameWithOwner'
+    done > repos.txt
+```
+
+Both listings need `read:org`.
+
+Code search narrows that list to repositories that actually have workflows:
 
 ```bash
 gh api -X GET search/code \
@@ -43,9 +77,9 @@ gh api -X GET search/code \
   --jq '.items[].repository.full_name' | sort -u
 ```
 
-Code search is indexed, not authoritative, so treat the result as a starting
-list rather than a guarantee. To check a specific repository for a lockfile, ask
-for the file directly:
+Code search is indexed, not authoritative, so treat the result as a filter
+rather than a guarantee. To check a specific repository for a lockfile, ask for
+the file directly:
 
 ```bash
 gh api "repos/$REPO/contents/.github/workflows/actions.lock" --silent 2>/dev/null \
@@ -164,20 +198,31 @@ Copy from [`examples/`](./examples):
 
 ## 5. Enable the policy in evaluate mode
 
-In your enterprise, go to **Policies → Actions → Policies** and create a new
-actions policy:
+Create a new actions policy:
+
+- **Enterprise:** **Policies → Actions → Policies**, scoped with a
+  **Target organizations** field.
+- **Organization:** the equivalent Actions policy settings for the organization.
+  There is no organization selector, since the policy already applies to one.
+
+Everything else is the same:
 
 | Field | Value |
 | --- | --- |
 | Policy Name | e.g. `Require Actions lockfile` |
 | Enforcement status | **Evaluate** to start |
-| Target organizations | All, or a dynamic list by name |
+| Target organizations | All, or a dynamic list by name (enterprise only) |
 | Target repositories | All repositories, or targeting criteria |
 | Target workflows | All workflows, or specific paths |
 | Workflow execution protections | **Require lockfile** |
 
 Evaluate mode runs the rule without blocking, so you can see which workflow runs
 *would* fail. Results appear under **Policy insights**.
+
+An organization-level policy is the better place to start even if you own the
+enterprise. It contains the blast radius, and it lets one organization finish
+migrating and turn on enforcement while others are still opening pull requests.
+Move the rule up to the enterprise once the pattern holds.
 
 Two targeting details make a staged rollout practical:
 

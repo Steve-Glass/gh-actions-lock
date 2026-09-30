@@ -84,7 +84,7 @@ a stale lockfile by running `gh actions-lock` locally and pushing the result.
 your source files, so review the diff accordingly:
 
 - **Workflow `uses:` refs are rewritten** to the narrowed ref it resolved. A
-  freshly pinned `actions/checkout@v4` becomes `actions/checkout@v4.4.0`,
+  freshly pinned `actions/checkout@v6` becomes `actions/checkout@v6.1.0`,
   because a full semver tag is far less likely to move than a `v4` splat. Pass
   `--no-narrow` to keep the original ref.
 - **Same-repo `./…` action references are migrated to `$/…`**, in both
@@ -189,5 +189,5 @@ request. See [Dependabot and the Actions lockfile](./dependabot.md).
 
 ## Related
 
-- [Rolling out lockfiles across an enterprise](./enterprise-rollout.md)
+- [Rolling out lockfiles across an organization or enterprise](./organization-and-enterprise-rollout.md)
 - [Dependabot and the Actions lockfile](./dependabot.md)
