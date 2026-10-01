@@ -1,13 +1,23 @@
 # Rolling out lockfiles across an organization or enterprise
 
 Locking one repository is a command. Locking a few hundred or a few thousand is
-a migration. This document describes one way to run that migration: open
-lockfile pull requests across every repository, track them to merge, add the
-per-repository automation, then turn on the policy that requires a lockfile.
+a migration — and you can run that migration today, with primitives that already
+exist. You can execute the CLI across every repository you own, open the
+resulting pull requests, push the automation workflow and skill to all of them,
+and then require a lockfile by policy.
+
+This document describes that sequence: open lockfile pull requests across every
+repository, track them to merge, add the per-repository automation, then turn on
+the policy that requires a lockfile.
 
 The sequence is the same whether you are an organization owner or an enterprise
 owner. Only two things differ: how you enumerate repositories, and where the
 policy lives. Both are called out where they matter.
+
+> [!NOTE]
+> This is a rollout pattern built from the primitives available today, not a
+> native bulk-provisioning feature. It works now, and it is expected to get
+> simpler as central management lands.
 
 > [!NOTE]
 > gh-actions-lock is in public preview, and the **Require lockfile** policy is a
@@ -91,17 +101,38 @@ for `filename:actions.lock` undercounts.
 
 ## 2. Open lockfile pull requests at scale
 
-Running `gh actions-lock` yourself and pushing is the mechanical option: clone,
-run, branch, push, open a pull request. It works, and for a few dozen
-repositories it is probably the right call.
+Both options here are programmatic and run against your whole repository list.
+Pick based on how much per-repository judgment you expect to need.
 
-At larger scale the problem is not running the command, it is that some fraction
-of repositories will not lock cleanly. A workflow uses an unresolvable local
-action, a dependency is a composite that reaches a `./…` path, a repository has
-no workflows worth locking. Those need a judgment call per repository.
+**Script it.** Clone, run `gh actions-lock`, branch, push, open a pull request,
+in a loop over `repos.txt`. Fully deterministic, no agent involved, and for a
+list where you expect most repositories to lock cleanly it is the simpler
+choice:
 
-Dispatching a Copilot agent task per repository handles that, because the agent
-can read the finding and react rather than failing the batch:
+```bash
+while read -r repo; do
+  tmp=$(mktemp -d)
+  gh repo clone "$repo" "$tmp" -- --quiet || continue
+  git -C "$tmp" checkout -b actions-lock --quiet
+  (cd "$tmp" && gh actions-lock --no-interactive) || { echo "$repo: skipped"; continue; }
+  git -C "$tmp" add -A
+  git -C "$tmp" diff --cached --quiet && { echo "$repo: nothing to do"; continue; }
+  git -C "$tmp" commit -m "Add Actions lockfile" --quiet
+  git -C "$tmp" push -u origin actions-lock --quiet
+  (cd "$tmp" && gh pr create --fill)
+done < repos.txt
+```
+
+The `add -A` matters: the lockfile is a new file, and the run also rewrites
+workflow YAML to narrow refs and migrate `./…` to `$/…`. Both belong in the
+commit. The `diff --cached --quiet` check keeps already-locked repositories from
+producing empty pull requests, so the loop is safe to re-run over the full list.
+
+**Dispatch an agent.** At larger scale the problem is not running the command,
+it is that some fraction of repositories will not lock cleanly. A workflow uses
+an unresolvable local action, a dependency is a composite that reaches a `./…`
+path, a repository has no workflows worth locking. The loop above skips those
+silently; an agent can read the finding and react:
 
 ```bash
 cat > /tmp/lock-prompt.md <<'EOF'
@@ -178,16 +209,32 @@ Roll these out as a second wave, after the lockfile pull requests have merged.
 The automation workflow's `verify` job fails on a repository with no lockfile,
 so shipping it first produces failing checks everywhere.
 
-Both files are static, so this wave does not need an agent. Committing them with
-a script is fine:
+Both files are static, so this wave does not need an agent. A script is enough:
 
 ```bash
 while read -r repo; do
   gh api "repos/$repo/contents/.github/workflows/actions-lock.yml" --silent 2>/dev/null \
     && { echo "$repo: already present"; continue; }
-  # clone, copy docs/examples/*, commit, push, open PR
+  tmp=$(mktemp -d)
+  gh repo clone "$repo" "$tmp" -- --quiet || continue
+  git -C "$tmp" checkout -b actions-lock-automation --quiet
+  mkdir -p "$tmp/.github/workflows" "$tmp/.github/skills/actions-lock"
+  cp docs/examples/actions-lock-workflow.yml "$tmp/.github/workflows/actions-lock.yml"
+  cp docs/examples/actions-lock-SKILL.md "$tmp/.github/skills/actions-lock/SKILL.md"
+  git -C "$tmp" add -A
+  git -C "$tmp" commit -m "Add Actions lockfile automation" --quiet
+  git -C "$tmp" push -u origin actions-lock-automation --quiet
+  (cd "$tmp" && gh pr create --fill)
 done < locked-repos.txt
 ```
+
+> [!IMPORTANT]
+> Pushing a branch that adds or changes anything under `.github/workflows/`
+> requires the `workflow` OAuth scope. Without it the push is rejected outright.
+> Check with `gh auth status` and add it with
+> `gh auth refresh -h github.com -s workflow`. A `GH_TOKEN` in the environment
+> takes precedence over your logged-in account, so unset it if it lacks the
+> scope.
 
 Copy from [`examples/`](./examples):
 
