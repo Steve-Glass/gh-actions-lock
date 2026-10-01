@@ -19,11 +19,6 @@ policy lives. Both are called out where they matter.
 > native bulk-provisioning feature. It works now, and it is expected to get
 > simpler as central management lands.
 
-> [!NOTE]
-> gh-actions-lock is in public preview, and the **Require lockfile** policy is a
-> separate preview on top of it. Flags, lockfile schema, and the policy surface
-> may all change.
-
 ## The end state
 
 Actions policies are generally available, and one of the workflow execution
@@ -209,7 +204,28 @@ Roll these out as a second wave, after the lockfile pull requests have merged.
 The automation workflow's `verify` job fails on a repository with no lockfile,
 so shipping it first produces failing checks everywhere.
 
-Both files are static, so this wave does not need an agent. A script is enough:
+Both files are static, so this wave does not need an agent. A script is enough.
+
+Pushing a branch that adds anything under `.github/workflows/` requires the
+`workflow` OAuth scope, so check for it once before the loop rather than
+discovering it on the first repository:
+
+```bash
+scopes=$(gh api -i user 2>/dev/null | sed -n 's/^[Xx]-[Oo]auth-[Ss]copes: //p' | tr -d '\r')
+if [ -n "$scopes" ] && ! printf '%s' "$scopes" | grep -q '\bworkflow\b'; then
+  echo "Token lacks the 'workflow' scope; pushes touching .github/workflows/ will be rejected."
+  echo "Current scopes: $scopes"
+  echo "Fix: gh auth refresh -h github.com -s workflow"
+  [ -n "$GH_TOKEN" ] && echo "Note: GH_TOKEN is set and overrides your logged-in account. Unset it to use that account instead."
+  exit 1
+fi
+```
+
+An empty `scopes` means a fine-grained or app token, which does not report
+classic scopes. Those need `Workflows: write` on the target repositories, so the
+check passes them through rather than guessing.
+
+Then the loop itself:
 
 ```bash
 while read -r repo; do
@@ -227,14 +243,6 @@ while read -r repo; do
   (cd "$tmp" && gh pr create --fill)
 done < locked-repos.txt
 ```
-
-> [!IMPORTANT]
-> Pushing a branch that adds or changes anything under `.github/workflows/`
-> requires the `workflow` OAuth scope. Without it the push is rejected outright.
-> Check with `gh auth status` and add it with
-> `gh auth refresh -h github.com -s workflow`. A `GH_TOKEN` in the environment
-> takes precedence over your logged-in account, so unset it if it lacks the
-> scope.
 
 Copy from [`examples/`](./examples):
 
