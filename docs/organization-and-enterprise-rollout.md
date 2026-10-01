@@ -11,8 +11,11 @@ repository, track them to merge, add the per-repository automation, then turn on
 the policy that requires a lockfile.
 
 The sequence is the same whether you are an organization owner or an enterprise
-owner. Only two things differ: how you enumerate repositories, and where the
-policy lives. Both are called out where they matter.
+owner. Only two things differ: how you enumerate repositories, and which level
+you create the policy at. Both are called out where they matter. **Require
+lockfile** is available at the enterprise, organization, and repository levels,
+so you can also pilot it on a single repository before committing to a wider
+rollout.
 
 > [!NOTE]
 > This is a rollout pattern built from the primitives available today, not a
@@ -257,31 +260,46 @@ Copy from [`examples/`](./examples):
 
 ## 5. Enable the policy in evaluate mode
 
-Create a new actions policy:
+Actions policies exist at three levels, and **Require lockfile** is available at
+each. Where you create the policy determines how far it reaches:
 
-- **Enterprise:** **Policies → Actions → Policies**, scoped with a
-  **Target organizations** field.
-- **Organization:** the equivalent Actions policy settings for the organization.
-  There is no organization selector, since the policy already applies to one.
+| Level | Where | Reaches |
+| --- | --- | --- |
+| Enterprise | **Policies → Actions → Policies** | Selected organizations and their repositories |
+| Organization | **Settings → Actions → Policies** | Repositories in that organization |
+| Repository | **Settings → Actions → Policies** | That repository |
 
-Everything else is the same:
+The policy form is the same at every level. The only difference is which
+targeting fields appear, since a narrower level has already decided the broader
+scope:
 
-| Field | Value |
-| --- | --- |
-| Policy Name | e.g. `Require Actions lockfile` |
-| Enforcement status | **Evaluate** to start |
-| Target organizations | All, or a dynamic list by name (enterprise only) |
-| Target repositories | All repositories, or targeting criteria |
-| Target workflows | All workflows, or specific paths |
-| Workflow execution protections | **Require lockfile** |
+| Field | Value | Where it appears |
+| --- | --- | --- |
+| Policy Name | e.g. `Require Actions lockfile` | All levels |
+| Enforcement status | **Evaluate** to start | All levels |
+| Target organizations | All, or a dynamic list by name | Enterprise only |
+| Target repositories | All repositories, or targeting criteria | Enterprise and organization |
+| Target workflows | All workflows, or specific paths | All levels |
+| Workflow execution protections | **Require lockfile** | All levels |
 
 Evaluate mode runs the rule without blocking, so you can see which workflow runs
 *would* fail. Results appear under **Policy insights**.
 
-An organization-level policy is the better place to start even if you own the
-enterprise. It contains the blast radius, and it lets one organization finish
-migrating and turn on enforcement while others are still opening pull requests.
-Move the rule up to the enterprise once the pattern holds.
+Pick the level that matches how far along the migration is. A repository-level
+policy is the natural fit for a pilot: one team can turn on enforcement for
+their own repository and live with it before anything is required of anyone
+else. It is also the right tool for a repository that finished migrating well
+ahead of its organization.
+
+An organization-level policy is the better place to start for the migration
+proper, even if you own the enterprise. It contains the blast radius, and it
+lets one organization finish migrating and enforce while others are still
+opening pull requests. Move the rule up to the enterprise once the pattern
+holds.
+
+Policies at different levels can apply to the same repository at once. Before
+relying on a narrower policy to relax a broader one, confirm the behavior in
+**Policy insights** rather than assuming it.
 
 Two targeting details make a staged rollout practical:
 
