@@ -42,12 +42,11 @@ lockfile. A report of `local path actions are not yet supported` usually means a
 `./…` reference does not resolve — those paths are relative to the repository
 root, not to the directory of the file containing them.
 
-Job-level reusable workflow calls
-(`jobs.<id>.uses: owner/repo/.github/workflows/x.yml@ref`) are not read by the
-CLI yet, and a fix run deletes a correct lockfile entry for one
-(github/gh-actions-lock#129, under review). If this repository calls remote
-reusable workflows, check `git diff` on the lockfile before committing and
-restore any entry the run removed.
+Handling of job-level reusable workflow calls
+(`jobs.<id>.uses: owner/repo/.github/workflows/x.yml@ref`) is still under
+review. If this repository calls remote reusable workflows, review `git diff` on
+the lockfile before committing and raise anything that looks wrong rather than
+committing it.
 
 Background on how locking is automated in this repository:
 `docs/repository-developer-experience.md`.

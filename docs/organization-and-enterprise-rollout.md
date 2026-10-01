@@ -262,13 +262,10 @@ The two are complementary, and the lockfile is the stronger of the pair:
 | Visible in pull request diffs | Ref only | Resolved commit per dependency |
 
 Neither table row covers job-level reusable workflow calls
-(`jobs.<id>.uses: owner/repo/.github/workflows/x.yml@ref`). The lockfile format
-and the Actions runtime both handle them, but the CLI does not yet read them
-([#129](https://github.com/github/gh-actions-lock/issues/129), under review and
-not yet triaged), and a fix run deletes a correct entry for one. Plan the
-rollout around that: repositories calling remote reusable workflows should get
-the verify-only automation, not the auto-committing `update` job, until it is
-fixed.
+(`jobs.<id>.uses: owner/repo/.github/workflows/x.yml@ref`). Guidance there is
+still under review. Until it is settled, plan for repositories calling remote
+reusable workflows to get the verify-only automation rather than the
+auto-committing `update` job.
 
 Running both is reasonable. SHA pinning is a blunt constraint on what a workflow
 may reference; the lockfile is a verified record of what those references
