@@ -24,7 +24,10 @@ without anyone tracking it manually.
 | Copilot skill | `.github/skills/actions-lock/SKILL.md` | Teaches Copilot to run and verify the lock command as part of any workflow change. |
 | Automation workflow | `.github/workflows/actions-lock.yml` | Regenerates and commits the lockfile on push; verifies it on pull requests. |
 
-Ready-to-copy versions of the last two live in [`examples/`](./examples):
+You add two of these by hand. The lockfile is not one of them — it is produced
+by running the CLI, and it stays that way for its whole life.
+
+Ready-to-copy versions of the two you add live in [`examples/`](./examples):
 
 - [`examples/actions-lock-workflow.yml`](./examples/actions-lock-workflow.yml)
 - [`examples/actions-lock-SKILL.md`](./examples/actions-lock-SKILL.md)

@@ -260,6 +260,29 @@ Copy from [`examples/`](./examples):
 
 ## 5. Enable the policy in evaluate mode
 
+> [!WARNING]
+> Do not create an organization or enterprise policy until the repositories in
+> scope have lockfiles and verify cleanly. These levels apply to repositories
+> that had no say in the timing, so enforcing early blocks workflow runs in
+> repositories that are still waiting on a pull request to merge.
+>
+> Merged pull requests are not the same as coverage. Check the repositories
+> themselves before creating the policy:
+>
+> ```bash
+> while read -r repo; do
+>   gh api "repos/$repo/contents/.github/workflows/actions.lock" --silent 2>/dev/null \
+>     || echo "NOT LOCKED: $repo"
+> done < repos.txt
+> ```
+>
+> An empty result is the gate. Even then, start in **Evaluate** rather than
+> **Active**.
+>
+> Repository-level policy is the exception: it affects only the repository that
+> opted in, so a team that has finished migrating can enforce whenever they
+> like.
+
 Actions policies exist at three levels, and **Require lockfile** is available at
 each. Where you create the policy determines how far it reaches:
 
