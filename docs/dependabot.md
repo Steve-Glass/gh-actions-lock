@@ -83,6 +83,10 @@ Review the changed commit SHA the way you would review any dependency change. A
 moved `owner_id` or `repo_id` is a stronger signal still: it means the
 repository behind that name is not the one you locked.
 
+Review it, but do not edit it. The lockfile is generated, and the CLI is the
+only thing that writes it. If a Dependabot pull request's lockfile looks wrong,
+close it or fix the workflow and let the lockfile be regenerated.
+
 ## Cooldowns
 
 Dependabot's [`cooldown`

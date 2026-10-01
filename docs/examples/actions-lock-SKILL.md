@@ -11,7 +11,8 @@ See docs/repository-developer-experience.md for the rationale.
 When changing files under `.github/workflows/`, or changing an `action.yml` or
 `action.yaml` used by those workflows:
 
-1. Do not edit `.github/workflows/actions.lock` manually.
+1. Never edit `.github/workflows/actions.lock` yourself, for any reason. It is
+   generated. Change the workflow and re-run the CLI instead.
 2. Ensure the `github/gh-actions-lock` CLI extension is installed. This is safe
    to run when it is already present:
 
@@ -45,8 +46,8 @@ root, not to the directory of the file containing them.
 Handling of job-level reusable workflow calls
 (`jobs.<id>.uses: owner/repo/.github/workflows/x.yml@ref`) is still under
 review. If this repository calls remote reusable workflows, review `git diff` on
-the lockfile before committing and raise anything that looks wrong rather than
-committing it.
+the lockfile and report anything that looks wrong. Do not hand-edit the lockfile
+to correct it.
 
 Background on how locking is automated in this repository:
 `docs/repository-developer-experience.md`.

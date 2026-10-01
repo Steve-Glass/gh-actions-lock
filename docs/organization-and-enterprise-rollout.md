@@ -140,7 +140,8 @@ Add a GitHub Actions lockfile to this repository.
 4. Verify with: gh actions-lock --verify
 5. Open a pull request with the lockfile and any rewritten workflow files.
 
-If locking fails, do not force it. Open no pull request and report the exact
+If locking fails, do not force it. Never write or edit the lockfile yourself —
+it is generated only by the CLI. Open no pull request and report the exact
 finding instead.
 EOF
 
@@ -192,6 +193,9 @@ Review the lockfile diffs. A first lockfile records the commit for every action
 the repository already uses; if one of those was already compromised, locking
 pins the compromise. Locking makes dependencies visible and stable, not
 retroactively safe.
+
+If a lockfile looks wrong, close the pull request and re-run the CLI. Lockfiles
+are generated, and nothing in this rollout should ever write one by hand.
 
 ## 4. Add the skill and the automation workflow
 

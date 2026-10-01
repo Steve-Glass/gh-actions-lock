@@ -57,7 +57,7 @@ task done until `gh actions-lock --verify` passes.
 
 No terminal required for this path.
 
-### 2. Editing by hand
+### 2. Editing workflows yourself
 
 Edit the workflow however you like and push to a branch. The `update` job runs
 the lock command for you and, if anything changed, commits the result back to
