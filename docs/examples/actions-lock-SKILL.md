@@ -11,8 +11,10 @@ See docs/repository-developer-experience.md for the rationale.
 When changing files under `.github/workflows/`, or changing an `action.yml` or
 `action.yaml` used by those workflows:
 
-1. Never edit `.github/workflows/actions.lock` yourself, for any reason. It is
-   generated. Change the workflow and re-run the CLI instead.
+1. Generate `.github/workflows/actions.lock` only with the CLI; do not create or
+   edit it manually. Manual changes bypass dependency resolution and can leave
+   refs, commits, or repository IDs inconsistent. Verification or workflow
+   startup can fail, and a later CLI run may overwrite the edits.
 2. Ensure the `github/gh-actions-lock` CLI extension is installed. This is safe
    to run when it is already present:
 
@@ -39,9 +41,21 @@ When changing files under `.github/workflows/`, or changing an `action.yml` or
 
 Do not consider the task complete unless verification succeeds. If locking
 fails, report the exact finding instead of leaving a stale or incomplete
-lockfile. A report of `local path actions are not yet supported` usually means a
-`./…` reference does not resolve — those paths are relative to the repository
-root, not to the directory of the file containing them.
+lockfile. Use the finding's detail and remediation to identify the next step;
+do not delete lockfile entries or accept moved pins just to make a check pass.
+
+For `local path actions are not yet supported`, check that each `./…` path
+resolves from the repository root to an `action.yml` or `action.yaml`. Fix an
+incorrect path and re-run the CLI. If the action is generated, checked out from
+another repository, or otherwise unavailable for inspection, defer onboarding
+that workflow and report the limitation. Other workflows can still be locked.
+If the affected workflow is already onboarded, report the blocking finding
+rather than removing its lockfile entry.
+
+Other failures include missing or changed refs, invalid `$/…` paths, unreachable
+pins, misleading SHA-shaped refs, and API or authentication failures. See
+[Troubleshooting](https://github.com/github/gh-actions-lock/blob/main/docs/repository-developer-experience.md#troubleshooting)
+for common findings and recovery steps.
 
 Handling of job-level reusable workflow calls
 (`jobs.<id>.uses: owner/repo/.github/workflows/x.yml@ref`) is still under

@@ -1,27 +1,21 @@
 # Dependabot and the Actions lockfile
 
-Dependabot keeps GitHub Actions dependencies current. The lockfile keeps them
-pinned. Running both means a version bump arrives as a pull request, and the
-lockfile in that same pull request records the exact commit the new ref
-resolves to.
-
-Previously the two could drift. When Dependabot bumped `actions/checkout@v6` to
-`@v7`, the lockfile still pinned the old commit and the next verification run
-failed. That gap is closed.
+Dependabot updates action references in workflow YAML and invokes the CLI to
+regenerate the corresponding lockfile entries in the same pull request.
 
 > [!NOTE]
 > gh-actions-lock is in public preview. Flags, findings JSON, and lockfile
 > schema may change between releases, and Dependabot pins a specific CLI version
 > and lockfile schema. See [RELEASING.md](../RELEASING.md).
 
-## What Dependabot does now
+## Lockfile updates
 
 When Dependabot opens a version update for a GitHub Actions dependency in a
 workflow that is **already onboarded** to lockfile pinning, it also regenerates
 the corresponding lockfile entry, so the pinned commit SHA always matches the
 updated ref in your workflow YAML.
 
-The division of labor:
+The two tools have separate responsibilities:
 
 - **Dependabot owns the workflow YAML.** It decides the new ref, exactly as it
   does today.
@@ -32,7 +26,7 @@ The division of labor:
 If you already use Dependabot for GitHub Actions and you have onboarded
 workflows, this needs no configuration.
 
-## What "onboarded" means here
+## Onboarding
 
 Dependabot invokes the CLI with `--no-onboard`, which refuses to add lockfile
 entries for workflows or actions that do not already have them. A dependency
@@ -47,8 +41,8 @@ Dependabot bumps in a workflow you never locked produces a non-blocking
 }
 ```
 
-This is deliberate. A dependency update is the wrong moment to silently expand
-what your lockfile covers. Onboard first, on purpose:
+Onboard workflows with the CLI before relying on Dependabot to maintain their
+lockfile entries:
 
 ```bash
 gh actions-lock
@@ -170,5 +164,5 @@ the lockfile is stale. That is the form to use in a required check.
 ## Related
 
 - [Setting up lockfile pinning](../README.md)
-- [A developer experience for locking a single repository](./repository-developer-experience.md)
+- [Keeping a repository's Actions lockfile current](./repository-developer-experience.md)
 - [Dependabot cooldown options reference](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#cooldown)

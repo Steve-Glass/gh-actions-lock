@@ -86,7 +86,7 @@ Finally, locked actions must have a branch that the commit being locked exists w
 
 ## Documentation
 
-- [A developer experience for locking a single repository](./docs/repository-developer-experience.md) — a worked example that combines a Copilot skill with a workflow so the lockfile stays current without anyone remembering to run the command.
+- [Keeping a repository's Actions lockfile current](./docs/repository-developer-experience.md) — examples of a Copilot skill and workflow that run the CLI when dependencies change.
 - [Dependabot and the Actions lockfile](./docs/dependabot.md) — how Dependabot regenerates lockfile entries when it bumps an action, and how cooldowns fit in.
 - [Rolling out lockfiles across an organization or enterprise](./docs/organization-and-enterprise-rollout.md) — opening lockfile pull requests at scale, tracking them to merge, and enabling the Require lockfile policy.
 

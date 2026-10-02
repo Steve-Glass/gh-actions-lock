@@ -1,14 +1,9 @@
 # Rolling out lockfiles across an organization or enterprise
 
-Locking one repository is a command. Locking a few hundred or a few thousand is
-a migration — and you can run that migration today, with primitives that already
-exist. You can execute the CLI across every repository you own, open the
-resulting pull requests, push the automation workflow and skill to all of them,
-and then require a lockfile by policy.
-
-This document describes that sequence: open lockfile pull requests across every
-repository, track them to merge, add the per-repository automation, then turn on
-the policy that requires a lockfile.
+Run the CLI across your repositories, open pull requests with the generated
+lockfiles, and distribute the automation workflow and Copilot skill. Once the
+repositories in scope have been verified, enable the **Require lockfile**
+policy.
 
 The sequence is the same whether you are an organization owner or an enterprise
 owner. Only two things differ: how you enumerate repositories, and which level
@@ -18,19 +13,17 @@ so you can also pilot it on a single repository before committing to a wider
 rollout.
 
 > [!NOTE]
-> This is a rollout pattern built from the primitives available today, not a
-> native bulk-provisioning feature. It works now, and it is expected to get
-> simpler as central management lands.
+> This guide combines existing CLI commands and APIs for a scripted or
+> Copilot-assisted rollout. It is not a native bulk-provisioning feature.
 
-## The end state
+## Rollout sequence
 
 Actions policies are generally available, and one of the workflow execution
 protections they can apply is **Require lockfile**, which requires workflows to
 use a lockfile.
 
-Order matters. Turning the policy on before repositories have lockfiles blocks
-their workflows. The sequence below gets lockfiles in place first and enables
-enforcement last.
+Enabling enforcement before repositories have verified lockfiles can block
+workflow runs. Generate and verify the lockfiles before enabling enforcement.
 
 ```mermaid
 flowchart TD
@@ -102,10 +95,8 @@ for `filename:actions.lock` undercounts.
 Both options here are programmatic and run against your whole repository list.
 Pick based on how much per-repository judgment you expect to need.
 
-**Script it.** Clone, run `gh actions-lock`, branch, push, open a pull request,
-in a loop over `repos.txt`. Fully deterministic, no agent involved, and for a
-list where you expect most repositories to lock cleanly it is the simpler
-choice:
+**Scripted rollout.** Clone each repository, run `gh actions-lock`, and open a
+pull request in a loop over `repos.txt`:
 
 ```bash
 while read -r repo; do
@@ -121,16 +112,14 @@ while read -r repo; do
 done < repos.txt
 ```
 
-The `add -A` matters: the lockfile is a new file, and the run also rewrites
+Use `add -A` to stage the new lockfile. The run also rewrites
 workflow YAML to narrow refs and migrate `./…` to `$/…`. Both belong in the
 commit. The `diff --cached --quiet` check keeps already-locked repositories from
 producing empty pull requests, so the loop is safe to re-run over the full list.
 
-**Dispatch an agent.** At larger scale the problem is not running the command,
-it is that some fraction of repositories will not lock cleanly. A workflow uses
-an unresolvable local action, a dependency is a composite that reaches a `./…`
-path, a repository has no workflows worth locking. The loop above skips those
-silently; an agent can read the finding and react:
+**Copilot-assisted rollout.** An agent can inspect findings when a repository
+cannot be locked, such as an unresolved local action or a composite dependency
+with an unsupported path:
 
 ```bash
 cat > /tmp/lock-prompt.md <<'EOF'
@@ -189,8 +178,7 @@ gh agent-task list --limit 200 --json pullRequestUrl,pullRequestState \
 
 Auto-merge must be enabled on the repository, and the pull request still has to
 satisfy branch protection. Repositories requiring review will sit until someone
-approves them — which for a change that alters what executes on your runners is
-reasonable.
+approves them.
 
 Review the lockfile diffs. A first lockfile records the commit for every action
 the repository already uses; if one of those was already compromised, locking
@@ -345,14 +333,14 @@ Leave the per-repository `verify` job in place. The policy blocks a workflow run
 that has no lockfile; the `verify` job tells an author their lockfile is stale
 while they are still in the pull request, which is a better place to find out.
 
-## What the policy does and does not cover
+## Lockfile and SHA-pinning policies
 
 **Require lockfile** requires workflows to use a lockfile. It is distinct from
 the older allowed-actions setting, **Require actions to be pinned to a
 full-length commit SHA**, which lives under the actions and reusable workflows
 policy rather than under workflow execution protections.
 
-The two are complementary, and the lockfile is the stronger of the pair:
+The policies provide different controls:
 
 | | SHA pinning policy | Lockfile |
 | --- | --- | --- |
@@ -367,13 +355,13 @@ still under review. Until it is settled, plan for repositories calling remote
 reusable workflows to get the verify-only automation rather than the
 auto-committing `update` job.
 
-Running both is reasonable. SHA pinning is a blunt constraint on what a workflow
-may reference; the lockfile is a verified record of what those references
-resolved to.
+SHA pinning restricts the references in workflow YAML. The lockfile records
+resolved commits and repository identity, including transitive action
+dependencies.
 
 ## Related
 
-- [A developer experience for locking a single repository](./repository-developer-experience.md)
+- [Keeping a repository's Actions lockfile current](./repository-developer-experience.md)
 - [Dependabot and the Actions lockfile](./dependabot.md)
 - [About Actions policies](https://docs.github.com/actions/concepts/about-actions-policies)
 - [Control workflow execution](https://docs.github.com/actions/how-tos/administer/control-workflow-execution)

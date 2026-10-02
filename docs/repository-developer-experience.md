@@ -1,9 +1,8 @@
-# A developer experience for locking a single repository
+# Keeping a repository's Actions lockfile current
 
-`gh actions-lock` is a command. This document describes one way to wrap that
-command so that nobody on your team has to remember to run it.
-
-It is a worked example, not the only design.
+Use a Copilot skill and an Actions workflow to run `gh actions-lock` when
+workflow dependencies change. This guide includes examples you can copy into
+your repository.
 
 > [!NOTE]
 > gh-actions-lock is in public preview. Flags and lockfile format may change
@@ -11,12 +10,10 @@ It is a worked example, not the only design.
 > pinning the extension to a release you have tested:
 > `gh extension install github/gh-actions-lock --pin v0.1.6`.
 
-## The idea
+## Setup
 
-Locking has to happen wherever workflow changes happen. In practice that is two
-places: in the editor while someone (or Copilot) is authoring the change, and on
-GitHub after the change is pushed. Covering both keeps the lockfile current
-without anyone tracking it manually.
+The skill runs the CLI during Copilot-assisted edits. The Actions workflow
+updates the lockfile on push and verifies it on pull requests.
 
 | Piece | Location | Role |
 | --- | --- | --- |
@@ -24,15 +21,15 @@ without anyone tracking it manually.
 | Copilot skill | `.github/skills/actions-lock/SKILL.md` | Teaches Copilot to run and verify the lock command as part of any workflow change. |
 | Automation workflow | `.github/workflows/actions-lock.yml` | Regenerates and commits the lockfile on push; verifies it on pull requests. |
 
-You add two of these by hand. The lockfile is not one of them — it is produced
-by running the CLI, and it stays that way for its whole life.
+Copy the skill and automation workflow into your repository. Generate the
+lockfile with the CLI; do not create or edit it manually.
 
 Ready-to-copy versions of the two you add live in [`examples/`](./examples):
 
 - [`examples/actions-lock-workflow.yml`](./examples/actions-lock-workflow.yml)
 - [`examples/actions-lock-SKILL.md`](./examples/actions-lock-SKILL.md)
 
-## How a change flows
+## Workflow changes
 
 ```mermaid
 flowchart TD
@@ -58,8 +55,6 @@ When you ask Copilot to add, upgrade, or remove an action, it discovers the
 includes the generated changes in the same change set, and does not call the
 task done until `gh actions-lock --verify` passes.
 
-No terminal required for this path.
-
 ### 2. Editing workflows yourself
 
 Edit the workflow however you like and push to a branch. The `update` job runs
@@ -82,14 +77,14 @@ Every pull request touching workflows or local actions runs the read-only
 pull request token cannot safely push to a fork. A contributor from a fork fixes
 a stale lockfile by running `gh actions-lock` locally and pushing the result.
 
-## What the automation actually changes
+## Generated changes
 
 `gh actions-lock` does not only write the lockfile. On a fix run it also edits
 your source files, so review the diff accordingly:
 
 - **Workflow `uses:` refs are rewritten** to the narrowed ref it resolved. A
   freshly pinned `actions/checkout@v6` becomes `actions/checkout@v6.1.0`,
-  because a full semver tag is far less likely to move than a `v4` splat. Pass
+  preserving the resolved commit while recording a specific version. Pass
   `--no-narrow` to keep the original ref.
 - **Same-repo `./…` action references are migrated to `$/…`**, in both
   workflows and in your in-repo composite `action.yml` files. `$/…` always
@@ -117,9 +112,15 @@ transitively. If it does not resolve, the workflow is reported as skipped —
 workflow already in the lockfile, the same situation is a hard error instead of
 a skip, so it fails the `verify` job rather than silently dropping coverage.
 
+Fix an incorrect path and re-run the CLI. If the action is generated or checked
+out from another repository and cannot be inspected, defer onboarding the
+affected workflow, not the entire repository. Do not include it in a **Require
+lockfile** policy until it can be locked and verified. For an already-onboarded
+workflow, investigate the failure without manually removing its lockfile entry.
+
 ## Reusable workflows
 
-### Where your lockfile stops
+### Dependency ownership
 
 A lockfile pins the actions used by the workflows in its own repository,
 including transitive dependencies. It does not reach across a reusable workflow
@@ -130,13 +131,11 @@ you called.
 So calling a reusable workflow means trusting that the repository you called has
 locked its own dependencies. Your lockfile cannot do it for them.
 
-What your lockfile does control is which commit of that workflow you get. That
-is the anchor for the whole chain: if the callee ref is not pinned, the callee's
-lockfile is irrelevant, because you do not know which version of it ran. Pinning
-the reusable workflow reference is what makes the callee's own locking
-meaningful.
+Pinning the reusable workflow reference selects the called repository's commit,
+including the workflow and its lockfile. The called repository is responsible
+for keeping its own dependencies locked.
 
-Two things to get right:
+For reusable workflows:
 
 - Pin the reusable workflow reference to a commit SHA.
 - Confirm the repositories you call are onboarded themselves. For internal
@@ -205,7 +204,32 @@ Dependencies bumped by Dependabot are handled separately: it updates the
 workflow YAML and regenerates the matching lockfile entry in the same pull
 request. See [Dependabot and the Actions lockfile](./dependabot.md).
 
-## Rules of thumb
+## Troubleshooting
+
+Do not create or repair a lockfile by hand. Manual edits bypass dependency
+resolution and can make its refs, commits, or repository IDs inconsistent.
+Verification or workflow startup can fail, and regeneration may overwrite the
+edits. Change workflow inputs where needed, then regenerate with the CLI.
+
+The CLI reports findings with details and, where available, remediation.
+These are common cases, not an exhaustive catalog of every message:
+
+| Finding or failure | Next step |
+| --- | --- |
+| `not-pinned`, `ref-changed`, or `stale` | Review the workflow changes, run `gh actions-lock --no-interactive`, then `gh actions-lock --verify`. |
+| `onboarding-required` | A run with `--no-onboard` cannot add coverage. Run the CLI without that flag to onboard the workflow deliberately. |
+| `local-action` / local path actions not supported | Check the repository-root-relative path and action definition. If it cannot be inspected, defer onboarding that workflow. See [Local actions](#local-actions). |
+| `invalid-self-repository-ref` | Fix the `$/…` path or remove a forbidden `@ref` suffix, then re-run the CLI. |
+| `ref-moved` | Review the upstream change. To update a legitimately moved ref, run `gh actions-lock --relock`. |
+| `unreachable-pin` or `misleading-sha` | Investigate the upstream ref and history before accepting a change. Use `--relock --accept-moved` only after confirming an unreachable pin resulted from a legitimate move. |
+| `ancestry-unknown`, `reachability-unknown`, or API/authentication errors | Check token access, network connectivity, and API rate limits, then retry verification. An inconclusive check is not proof of a valid pin. |
+| Unreadable workflow or lockfile | Read the reported parse or file error. Correct workflow YAML; for a damaged lockfile, restore a known-good generated version from version control and re-run the CLI. |
+
+The CLI's diagnostic links currently point to general
+[security-hardening guidance](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions);
+there is not yet a dedicated explanation for every finding.
+
+## Reviewing changes
 
 - Never hand-edit `.github/workflows/actions.lock`. Regenerate it instead.
 - Review lockfile diffs like any other dependency change. A changed commit SHA
